@@ -15,8 +15,6 @@ const uint32_t WIDTH  = 1024;
 const uint32_t HEIGHT = 1024;
 const uint32_t IMG_SIZE = WIDTH * HEIGHT;
 
-template<typename T>
-using DataT = T[3*IMG_SIZE]; // RGB
 
 /**
  * Set color values for pixel (i,j).
@@ -25,7 +23,7 @@ using DataT = T[3*IMG_SIZE]; // RGB
  * This allows coalesced memory access on GPUs.
  */
 template<typename T>
-void setPixel(DataT<T>& image, uint32_t i, uint32_t j, T r, T g, T b) {
+void setPixel(T* image, uint32_t i, uint32_t j, T r, T g, T b) {
   image[ j + i*WIDTH ]              = r;
   image[ j + i*WIDTH + IMG_SIZE ]   = g;
   image[ j + i*WIDTH + 2*IMG_SIZE ] = b;
@@ -37,7 +35,7 @@ void setPixel(DataT<T>& image, uint32_t i, uint32_t j, T r, T g, T b) {
  * @todo find OpenACC directives to accelerate the computation
  */
 template<typename T>
-void computeImage(DataT<T>& image) {
+void computeImage(T* image) {
   for( uint32_t i=0; i<HEIGHT; ++i ) {
     for( uint32_t j=0; j<WIDTH; ++j ) {
       T red   = 0.5;
@@ -56,7 +54,7 @@ int main(void) {
   acc_set_device_num(0, acc_device_nvidia);
 #endif
 
-  DataT<float> image;
+  float* image = new float[3*IMG_SIZE];
   auto start_time = chrono::steady_clock::now();
 
   computeImage(image);
@@ -67,5 +65,6 @@ int main(void) {
 
   ImageWriter::PPM::writeRGB(image, WIDTH, HEIGHT, "image.ppm");
 
+  delete[] image;
   return 0;
 }
