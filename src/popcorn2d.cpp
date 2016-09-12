@@ -7,6 +7,7 @@
 
 #include <iostream>
 #include <chrono>
+#include <time.h>
 #include <cinttypes>
 
 using namespace std;
@@ -38,13 +39,33 @@ template<typename T>
 void computeImage(T* image) {
   for( uint32_t i=0; i<HEIGHT; ++i ) {
     for( uint32_t j=0; j<WIDTH; ++j ) {
-      T red   = 0.5;
+      T red   = 0.05;
       T green = j*1.0/WIDTH;
-      T blue  = 0.5;
+      T blue  = 0.01;
       setPixel(image, i, j, red, green, blue);
     }
   }
 }
+
+char * getFileName(char *dst){
+//Time to string formated as: ddMMYYYYmmss.ppm to create filename
+	char *d = dst;
+	char buffer[18];
+	int i = 0;
+	time_t t;
+	struct tm * timeinfo;
+	time(&t);
+	ctime(&t);
+	timeinfo = localtime(&t);
+	strftime(buffer,18, "%d%m%Y%H%M.ppm", timeinfo );
+	while (i < 17) {
+		*d = buffer[i];
+		d++;
+		i++;
+	}
+	return dst;
+}
+
 
 int main(void) {
 
@@ -56,14 +77,27 @@ int main(void) {
 
   float* image = new float[3*IMG_SIZE];
   auto start_time = chrono::steady_clock::now();
+  char test[17];
+  char in;
+  int flag = 0;
+
 
   computeImage(image);
-
   auto end_time = chrono::steady_clock::now();
-  cout << chrono::duration_cast<chrono::milliseconds>(end_time - start_time).count() << " ms";
-  cout << endl;
+  getFileName(test);
 
-  ImageWriter::PPM::writeRGB(image, WIDTH, HEIGHT, "image.ppm");
+
+  cout <<"Executed in "<< chrono::duration_cast<chrono::milliseconds>(end_time - start_time).count() << " ms "<< endl;
+  cout << "Save file? j/n" << endl;
+    std::cin >> in;
+    if ( in == 'j') {
+  	  flag = 1;
+    }
+  if (flag = 1){
+	  cout <<"Saved to: " <<test;
+	  ImageWriter::PPM::writeRGB(image, WIDTH, HEIGHT, test);
+  }
+  cout << endl;
 
   delete[] image;
   return 0;
