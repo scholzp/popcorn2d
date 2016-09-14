@@ -14,8 +14,8 @@
 
 using namespace std;
 //image settings
-const uint32_t WIDTH  = 1024;
-const uint32_t HEIGHT = 1024;
+const uint32_t WIDTH  = 16;
+const uint32_t HEIGHT = 16;
 const uint32_t ITERATION = 256;
 const uint32_t IMG_SIZE = WIDTH * HEIGHT;
 
@@ -38,23 +38,32 @@ const float talpha = 0.067;
  */
 template<typename T>
 void setPixel(T* image, uint32_t i, uint32_t j, T r, T g, T b) {
-  image[ j + i*WIDTH ]              = r;
-  image[ j + i*WIDTH + IMG_SIZE ]   = g;
-  image[ j + i*WIDTH + 2*IMG_SIZE ] = b;
+  image[ j + i*WIDTH ]              = 255 - 0.3*r;
+  image[ j + i*WIDTH + IMG_SIZE ]   = 255 - 0.5*g;
+  image[ j + i*WIDTH + 2*IMG_SIZE ] = 255 - 0.8*b;
 }
 
 int transX (int x){
-	return rint((x - l) / (r - l) * w);
+	return ((x - l) / (r - l) * w);
 }
 
 int transY (int y){
-	return rint((y - t) / (b - t) * h);
+	return ((y - t) / (b - t) * h);
 }
 /**
  * Compute the pixels. Color values are from [0,1].
  * @todo implement popcorn 2d fractal
  * @todo find OpenACC directives to accelerate the computation
  */
+template<typename T>
+void initImage(T* image){
+	for (uint32_t y=0; y  <  HEIGHT; ++y) {
+		 for (uint32_t x=0; x  <  WIDTH; ++x) {
+			 image[ x + y*WIDTH ] = 0;
+		 }
+	}
+}
+
 template<typename T>
 void computeImage(T* image) {
 	float xk;
@@ -83,11 +92,14 @@ void computeImage(T* image) {
 		  //perform iterations
 		  xk = xk + talpha*(cos( t0 * talpha + yk + cos (t1 * talpha + PI * xk)));
 		  yk = yk + talpha*(cos( t2 * talpha + xk + cos (t3 * talpha + PI * yk)));
-		  px = transX (xk);
 		  py = transY (yk);
+		  px = transX (xk);
 		  if ( px >= 0 && py >= 0 && px  <  WIDTH && py < HEIGHT) {
-			  image[ py + px*WIDTH ] += 0.001;
+			  image[ px + py*WIDTH ] += 0.001;
+		  }
 	  }
+	  char llll ;
+	  //cin >> llll;
 	 }
 	 //print progress
 	 if((y%each)==0)
@@ -96,9 +108,18 @@ void computeImage(T* image) {
 	// color pixels by generated values
 	for (uint32_t y=0; y  <  HEIGHT; ++y) {
 	 for (uint32_t x=0; x  <  WIDTH; ++x) {
+	      float density = sqrt(image[x + y*WIDTH ]);
+	      float r = 255*pow(density,0.4);
+	      float g = 255*pow(density,1.0);
+	      float b = 255*pow(density,1.4);
+	      //std::cout  << "r:" << r <<" g:" << g <<" b:"<< b << endl;
+	      setPixel(image, y, x, r, g, b);
 
 	 }
+	 char llll ;
+	 //cin >> llll;
 	}
+
 }
 
 template<typename T>
@@ -148,8 +169,8 @@ int main(void) {
 
   cout <<"Executed in "<< chrono::duration_cast<chrono::milliseconds>(end_time - start_time).count() << " ms "<< endl;
   cout << "Save file? j/n" << endl;
-    std::cin >> in;
-    if ( in == 'j') {
+  std::cin >> in;
+  if ( in == 'j') {
   	  flag = 1;
     }
   if (flag == 1){
