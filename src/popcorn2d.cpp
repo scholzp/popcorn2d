@@ -14,20 +14,20 @@
 
 using namespace std;
 //image settings
-const uint32_t WIDTH  = 16;
-const uint32_t HEIGHT = 16;
+const uint32_t WIDTH  = 256;
+const uint32_t HEIGHT = 256;
 const uint32_t ITERATION = 256;
 const uint32_t IMG_SIZE = WIDTH * HEIGHT;
 
 //parameters
-const int t = -1, b = 1, l = 1, r = -1;
+const float s = 1, q = -1, l = 1, p = -1;
 const uint32_t w = WIDTH;
 const uint32_t h = HEIGHT;
 const float t0 = 31.1;
 const float t1 = -43.4;
 const float t2 = -43.3;
 const float t3 = 22.2;
-const float talpha = 0.067;
+float talpha = 0.067;
 
 
 /**
@@ -38,17 +38,17 @@ const float talpha = 0.067;
  */
 template<typename T>
 void setPixel(T* image, uint32_t i, uint32_t j, T r, T g, T b) {
-  image[ j + i*WIDTH ]              = 255 - 0.3*r;
-  image[ j + i*WIDTH + IMG_SIZE ]   = 255 - 0.5*g;
-  image[ j + i*WIDTH + 2*IMG_SIZE ] = 255 - 0.8*b;
+  image[ j + i*WIDTH ]              = 1.0 - 0.5*r;
+  image[ j + i*WIDTH + IMG_SIZE ]   = 1.0 - 0.2*g;
+  image[ j + i*WIDTH + 2*IMG_SIZE ] = 1.0 - 0.7*b;
 }
 
-int transX (int x){
-	return ((x - l) / (r - l) * w);
+int transX (float x){
+	return (float)((x - l) / (p - l) * w);
 }
 
-int transY (int y){
-	return ((y - t) / (b - t) * h);
+int transY (float y){
+	return (float)((y - q) / (s - q) * h);
 }
 /**
  * Compute the pixels. Color values are from [0,1].
@@ -83,41 +83,52 @@ void computeImage(T* image) {
 */
 
 	//generate values
+	for(int count = 0; count < 2; ++count){
 	for (uint32_t y = 0; y < HEIGHT; ++y) {
 	 for (uint32_t x = 0; x < WIDTH; ++x) {
 		 //set start values
-		 xk = (float)x / w * (r - l) + l;
-		 yk = (float)y / h * (b - t) + t;
+		 xk = (float) x / w * (p - l) + l;
+		 yk = (float) y / h * (q - s) + s;
 	  for (uint32_t j = 0; j <  ITERATION; j++) {
 		  //perform iterations
-		  xk = xk + talpha*(cos( t0 * talpha + yk + cos (t1 * talpha + PI * xk)));
-		  yk = yk + talpha*(cos( t2 * talpha + xk + cos (t3 * talpha + PI * yk)));
+		  xk =(float) xk + talpha*(cos( t0 * talpha + yk + cos(t1 * talpha + PI * (xk))));
+		  yk =(float) yk + talpha*(cos( t2 * talpha + xk + cos(t3 * talpha + PI * (yk))));
 		  py = transY (yk);
 		  px = transX (xk);
+		  /*
+		  cout << xk << "  , "<< yk << endl;
+		  cout << px << "  , "<< py << endl;
+		  char lll;
+		  cin >> lll;
+*/
 		  if ( px >= 0 && py >= 0 && px  <  WIDTH && py < HEIGHT) {
-			  image[ px + py*WIDTH ] += 0.001;
+			  image[ px + py*WIDTH ] += 0.01;
 		  }
 	  }
-	  char llll ;
-	  //cin >> llll;
+
+
 	 }
 	 //print progress
 	 if((y%each)==0)
 	       std::cout << "Progress = " << 100.0*y/(HEIGHT-1) << " %"<< endl;
 	}
+	talpha += 0.001;
+}
 	// color pixels by generated values
 	for (uint32_t y=0; y  <  HEIGHT; ++y) {
 	 for (uint32_t x=0; x  <  WIDTH; ++x) {
 	      float density = sqrt(image[x + y*WIDTH ]);
-	      float r = 255*pow(density,0.4);
-	      float g = 255*pow(density,1.0);
-	      float b = 255*pow(density,1.4);
-	      //std::cout  << "r:" << r <<" g:" << g <<" b:"<< b << endl;
+	      float r = pow(density,0.4);
+	      float g = pow(density,1.0);
+	      float b = pow(density,1.4);
+	      /*
+	      std::cout  << "r:" << r <<" g:" << g <<" b:"<< b << endl;
+	      char llll ;
+	      cin >> llll;
+	      */
 	      setPixel(image, y, x, r, g, b);
-
 	 }
-	 char llll ;
-	 //cin >> llll;
+
 	}
 
 }
