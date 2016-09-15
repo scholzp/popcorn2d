@@ -14,12 +14,13 @@
 
 using namespace std;
 //image settings
-const uint32_t WIDTH  = 256;
-const uint32_t HEIGHT = 256;
+const uint32_t WIDTH  = 1024;
+const uint32_t HEIGHT = 1024;
 const uint32_t ITERATION = 256;
 const uint32_t IMG_SIZE = WIDTH * HEIGHT;
 
 //parameters
+const int passCount = 2;
 const float s = 1, q = -1, l = 1, p = -1;
 const uint32_t w = WIDTH;
 const uint32_t h = HEIGHT;
@@ -37,10 +38,34 @@ float talpha = 0.067;
  * This allows coalesced memory access on GPUs.
  */
 template<typename T>
-void setPixel(T* image, uint32_t i, uint32_t j, T r, T g, T b) {
-  image[ j + i*WIDTH ]              = 1.0 - 0.5*r;
-  image[ j + i*WIDTH + IMG_SIZE ]   = 1.0 - 0.2*g;
-  image[ j + i*WIDTH + 2*IMG_SIZE ] = 1.0 - 0.7*b;
+void setPixel(T* image) {
+	//color order ist r, g, b
+	float colors[3], r, g, b ;
+
+	for (uint32_t y=0; y  <  HEIGHT; ++y) {
+	 for (uint32_t x=0; x  <  WIDTH; ++x) {
+	      float density = sqrt(image[x + y*WIDTH ]);
+	      colors[0] = pow(density,0.4);
+	      colors[1] = pow(density,1.0);
+	      colors[2] = pow(density,1.4);
+	      // check if color values in range of [0,1], else correct
+	      for(int count = 0; count <  3; ++count){
+	    	  if (colors[count] > 1 ){
+	    		  colors[count] = 1;
+	    	  }else if(colors[count] < 0){
+	    		  colors[count] = 0;
+	    	  }
+	      }
+	      /*
+	      std::cout  << "r:" << r <<" g:" << g <<" b:"<< b << endl;
+	      char llll ;
+	      cin >> llll;
+	      */
+	      image[ x + y*WIDTH ]              = 1.0 - 0.3*colors[0];
+	      image[ x + y*WIDTH + IMG_SIZE ]   = 1.0 - 0.5*colors[1];
+	      image[ x + y*WIDTH + 2*IMG_SIZE ] = 1.0 - 0.8*colors[2];
+	 }
+	}
 }
 
 int transX (float x){
@@ -83,7 +108,7 @@ void computeImage(T* image) {
 */
 
 	//generate values
-	for(int count = 0; count < 2; ++count){
+
 	for (uint32_t y = 0; y < HEIGHT; ++y) {
 	 for (uint32_t x = 0; x < WIDTH; ++x) {
 		 //set start values
@@ -102,39 +127,16 @@ void computeImage(T* image) {
 		  cin >> lll;
 */
 		  if ( px >= 0 && py >= 0 && px  <  WIDTH && py < HEIGHT) {
-			  image[ px + py*WIDTH ] += 0.01;
+			  image[ px + py*WIDTH ] += 0.001;
 		  }
 	  }
-
-
 	 }
 	 //print progress
 	 if((y%each)==0)
 	       std::cout << "Progress = " << 100.0*y/(HEIGHT-1) << " %"<< endl;
 	}
-	talpha += 0.001;
-}
 	// color pixels by generated values
-	for (uint32_t y=0; y  <  HEIGHT; ++y) {
-	 for (uint32_t x=0; x  <  WIDTH; ++x) {
-	      float density = sqrt(image[x + y*WIDTH ]);
-	      float r = pow(density,0.4);
-	      float g = pow(density,1.0);
-	      float b = pow(density,1.4);
-	      /*
-	      std::cout  << "r:" << r <<" g:" << g <<" b:"<< b << endl;
-	      char llll ;
-	      cin >> llll;
-	      */
-	      setPixel(image, y, x, r, g, b);
-	 }
 
-	}
-
-}
-
-template<typename T>
-void setValue(T* image, uint32_t i, uint32_t j, T v) {
 
 }
 
@@ -171,9 +173,15 @@ int main(void) {
   char test[17];
   char in;
   int flag = 0;
+  initImage(image);
 
+  for(int pass = 0; pass < passCount; ++pass){
+	  std::cout << "Pass " << (pass+1) << " out of " << passCount << endl;
+	  computeImage(image);
+	  talpha += 0.0001;
+  }
+  setPixel(image);
 
-  computeImage(image);
   auto end_time = chrono::steady_clock::now();
   getFileName(test);
 
