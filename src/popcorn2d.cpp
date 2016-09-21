@@ -10,25 +10,26 @@
 #include <time.h>
 #include <cinttypes>
 #include <math.h>
-#define PI 3.14159265
+#define PI 3.14159265359
+#define VERBOSE 1
 
 using namespace std;
 //image settings
-const uint32_t WIDTH  = 1024;
-const uint32_t HEIGHT = 1024;
-const uint32_t ITERATION = 256;
+const uint32_t WIDTH  = 400;
+const uint32_t HEIGHT = 400;
+const uint32_t ITERATION = 64;
 const uint32_t IMG_SIZE = WIDTH * HEIGHT;
 
 //parameters
 const int passCount = 2;
-const float s = 1, q = -1, l = 1, p = -1;
+const float s = 5.0, q = -5.0, l = 5.0, p = -5.0;
 const uint32_t w = WIDTH;
 const uint32_t h = HEIGHT;
 const float t0 = 31.1;
 const float t1 = -43.4;
 const float t2 = -43.3;
 const float t3 = 22.2;
-float talpha = 0.067;
+float talpha = 0.0632;
 
 
 /**
@@ -38,7 +39,7 @@ float talpha = 0.067;
  * This allows coalesced memory access on GPUs.
  */
 template<typename T>
-void setPixel(T* image) {
+void colorImage(T* image) {
 	//color order ist r, g, b
 	float colors[3], r, g, b ;
 
@@ -48,7 +49,7 @@ void setPixel(T* image) {
 	      colors[0] = pow(density,0.4);
 	      colors[1] = pow(density,1.0);
 	      colors[2] = pow(density,1.4);
-	      // check if color values in range of [0,1], else correct
+	      // check if color values in range of [0,1], else correctj
 	      for(int count = 0; count <  3; ++count){
 	    	  if (colors[count] > 1 ){
 	    		  colors[count] = 1;
@@ -56,20 +57,15 @@ void setPixel(T* image) {
 	    		  colors[count] = 0;
 	    	  }
 	      }
-	      /*
-	      std::cout  << "r:" << r <<" g:" << g <<" b:"<< b << endl;
-	      char llll ;
-	      cin >> llll;
-	      */
-	      image[ x + y*WIDTH ]              = 1.0 - 0.3*colors[0];
-	      image[ x + y*WIDTH + IMG_SIZE ]   = 1.0 - 0.5*colors[1];
-	      image[ x + y*WIDTH + 2*IMG_SIZE ] = 1.0 - 0.8*colors[2];
+	      image[ x + y*WIDTH ]              = 1.0 - 0.5*colors[0];
+	      image[ x + y*WIDTH + IMG_SIZE ]   = 1.0 - 0.2*colors[1];
+	      image[ x + y*WIDTH + 2*IMG_SIZE ] = 1.0 - 0.4*colors[2];
 	 }
 	}
 }
 
 int transX (float x){
-	return (float)((x - l) / (p - l) * w);
+	return ((float)(x - l) / (p - l) * w);
 }
 
 int transY (float y){
@@ -96,47 +92,31 @@ void computeImage(T* image) {
 	int each = 50;
 	int px, py;
 
-/*
-  for( uint32_t i=0; i<HEIGHT; ++i ) {
-    for( uint32_t j=0; j<WIDTH; ++j ) {
-      T red   = 0.05;
-      T green = j*1.0/WIDTH;
-      T blue  = 0.01;
-      setPixel(image, i, j, red, green, blue);
-    }
-  }
-*/
-
 	//generate values
 
 	for (uint32_t y = 0; y < HEIGHT; ++y) {
 	 for (uint32_t x = 0; x < WIDTH; ++x) {
 		 //set start values
 		 xk = (float) x / w * (p - l) + l;
-		 yk = (float) y / h * (q - s) + s;
+		 yk = (float) y / h * (s - q) + q;
 	  for (uint32_t j = 0; j <  ITERATION; j++) {
 		  //perform iterations
-		  xk =(float) xk + talpha*(cos( t0 * talpha + yk + cos(t1 * talpha + PI * (xk))));
-		  yk =(float) yk + talpha*(cos( t2 * talpha + xk + cos(t3 * talpha + PI * (yk))));
+		  xk +=(float)  talpha * (cos( (float)t0 * talpha + yk + cos(t1 * talpha + (PI * xk))));
+		  yk +=(float)  talpha * (cos( (float)t2 * talpha + xk + cos(t3 * talpha + PI * yk)));
 		  py = transY (yk);
 		  px = transX (xk);
-		  /*
-		  cout << xk << "  , "<< yk << endl;
-		  cout << px << "  , "<< py << endl;
-		  char lll;
-		  cin >> lll;
-*/
 		  if ( px >= 0 && py >= 0 && px  <  WIDTH && py < HEIGHT) {
 			  image[ px + py*WIDTH ] += 0.001;
 		  }
 	  }
 	 }
+#if VERBOSE == 1
 	 //print progress
 	 if((y%each)==0)
 	       std::cout << "Progress = " << 100.0*y/(HEIGHT-1) << " %"<< endl;
 	}
 	// color pixels by generated values
-
+#endif
 
 }
 
@@ -169,18 +149,22 @@ int main(void) {
 #endif
 
   float* image = new float[3*IMG_SIZE];
-  auto start_time = chrono::steady_clock::now();
   char test[17];
   char in;
   int flag = 0;
   initImage(image);
 
+
+
+  auto start_time = chrono::steady_clock::now();
   for(int pass = 0; pass < passCount; ++pass){
+#if VERBOSE==1
 	  std::cout << "Pass " << (pass+1) << " out of " << passCount << endl;
+#endif
 	  computeImage(image);
-	  talpha += 0.0001;
+	  talpha += 0.001;
   }
-  setPixel(image);
+  colorImage(image);
 
   auto end_time = chrono::steady_clock::now();
   getFileName(test);
