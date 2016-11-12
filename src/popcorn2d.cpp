@@ -11,7 +11,8 @@
 #include <cinttypes>
 #include <math.h>
 #define PI 3.14159265359
-#define VERBOSE 1
+#define VERBOSE 0
+#define TESTS 10 //sets numbers of performed tests
 
 using namespace std;
 //image settings
@@ -41,7 +42,7 @@ float talpha = 0.0632;
 template<typename T>
 void colorImage(T* image) {
 	//color order ist r, g, b
-	float colors[3], r, g, b ;
+	float colors[3];
 
 	for (uint32_t y=0; y  <  HEIGHT; ++y) {
 	 for (uint32_t x=0; x  <  WIDTH; ++x) {
@@ -114,9 +115,9 @@ void computeImage(T* image) {
 	 //print progress
 	 if((y%each)==0)
 	       std::cout << "Progress = " << 100.0*y/(HEIGHT-1) << " %"<< endl;
-	}
 	// color pixels by generated values
 #endif
+	}
 
 }
 
@@ -153,24 +154,34 @@ int main(void) {
   char in;
   int flag = 0;
   initImage(image);
+  int log[TESTS];
 
-
-
-  auto start_time = chrono::steady_clock::now();
-  for(int pass = 0; pass < passCount; ++pass){
-#if VERBOSE==1
-	  std::cout << "Pass " << (pass+1) << " out of " << passCount << endl;
-#endif
-	  computeImage(image);
-	  talpha += 0.001;
+  //performing computation TESTS-times
+  if (TESTS < 1){
+	  return 100;
   }
-  colorImage(image);
-
-  auto end_time = chrono::steady_clock::now();
+  for(int testNumber = 0; testNumber < TESTS; testNumber++)
+  {
+	  auto start_time = chrono::steady_clock::now();
+	  //actuall computation
+	  for(int pass = 0; pass < passCount; ++pass){
+#if VERBOSE==1
+		  std::cout << "Pass " << (pass+1) << " out of " << passCount << endl;
+#endif
+		  computeImage(image);
+		  talpha += 0.001;
+	  }
+	  colorImage(image);
+	  auto end_time = chrono::steady_clock::now();
+	  log[testNumber] = chrono::duration_cast<chrono::milliseconds>(end_time - start_time).count();
+  }
+  //Filename for computated picture
   getFileName(test);
-
-
-  cout <<"Executed in "<< chrono::duration_cast<chrono::milliseconds>(end_time - start_time).count() << " ms "<< endl;
+  //Output data from log-array
+  for(int logCount = 0; logCount < TESTS; logCount++) {
+	  cout <<"Test "<< logCount+1 <<" executed in "<< log[logCount] << " ms "<< endl;
+  }
+  //savedialog
   cout << "Save file? j/n" << endl;
   std::cin >> in;
   if ( in == 'j') {
@@ -181,7 +192,7 @@ int main(void) {
 	  ImageWriter::PPM::writeRGB(image, WIDTH, HEIGHT, test);
   }
   cout << endl;
-
+  //exit programm
   delete[] image;
   return 0;
 }
