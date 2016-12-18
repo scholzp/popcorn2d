@@ -1,7 +1,7 @@
 #include "ppm.hpp"
 
 #if defined(__PGI) or defined(__PGIC__)
-#define USE_OPENACC 1
+#define USE_OPENACC 0
 #include <openacc.h>
 #endif
 
@@ -12,7 +12,7 @@
 #include <math.h>
 #define PI 3.14159265359
 #define VERBOSE 0
-#define TESTS 10 //sets numbers of performed tests
+#define numberOfTests 1 //sets numbers of performed tests
 
 using namespace std;
 //image settings
@@ -30,7 +30,7 @@ const float t0 = 31.1;
 const float t1 = -43.4;
 const float t2 = -43.3;
 const float t3 = 22.2;
-float talpha = 0.0632;
+float talphaStart = 0.0632;
 
 
 /**
@@ -92,10 +92,20 @@ void computeImage(T* image) {
 	float yk;
 	int each = 50;
 	int px, py;
+	int talpha = talphaStart;
 
 	//generate values
-
+	//copy px, py, talpha to the device, create yk, xk on device and copy image in and after computation out
+#if USE_OPENACC
+	#pragma acc kernels  copyin(px, py, talpha) create(yk, xk) copy(image)
+#endif
+#if USE_OPENACC
+ 	#pragma acc loop independent
+#endif
 	for (uint32_t y = 0; y < HEIGHT; ++y) {
+#if USE_OPENACC
+ 	#pragma acc loop independent
+#endif
 	 for (uint32_t x = 0; x < WIDTH; ++x) {
 		 //set start values
 		 xk = (float) x / w * (p - l) + l;
@@ -111,13 +121,13 @@ void computeImage(T* image) {
 		  }
 	  }
 	 }
+	}
 #if VERBOSE == 1
 	 //print progress
 	 if((y%each)==0)
 	       std::cout << "Progress = " << 100.0*y/(HEIGHT-1) << " %"<< endl;
 	// color pixels by generated values
 #endif
-	}
 
 }
 
@@ -153,15 +163,15 @@ int main(void) {
   char test[17];
   char in;
   int flag = 0;
-  initImage(image);
-  int log[TESTS];
+  int log[numberOfTests];
 
-  //performing computation TESTS-times
-  if (TESTS < 1){
+  //performing computation numberOfTests-times
+  if (numberOfTests < 1){
 	  return 100;
   }
-  for(int testNumber = 0; testNumber < TESTS; testNumber++)
-  {
+  for(int testNumber = 0; testNumber < numberOfTests; testNumber++){
+	  //Initialazition
+	  initImage(image);
 	  auto start_time = chrono::steady_clock::now();
 	  //actuall computation
 	  for(int pass = 0; pass < passCount; ++pass){
@@ -169,7 +179,7 @@ int main(void) {
 		  std::cout << "Pass " << (pass+1) << " out of " << passCount << endl;
 #endif
 		  computeImage(image);
-		  talpha += 0.001;
+		  talphaStart += 0.001;
 	  }
 	  colorImage(image);
 	  auto end_time = chrono::steady_clock::now();
@@ -178,10 +188,10 @@ int main(void) {
   //Filename for computated picture
   getFileName(test);
   //Output data from log-array
-  for(int logCount = 0; logCount < TESTS; logCount++) {
+  for(int logCount = 0; logCount < numberOfTests; logCount++) {
 	  cout <<"Test "<< logCount+1 <<" executed in "<< log[logCount] << " ms "<< endl;
   }
-  //savedialog
+  //savedialog for last picture
   cout << "Save file? j/n" << endl;
   std::cin >> in;
   if ( in == 'j') {
