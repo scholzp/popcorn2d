@@ -15,8 +15,16 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "PGI")
   message(">>> Setting compiler flags for PGI compiler...")
-  #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Minfo=accel -acc -ta=nvidia:kepler -ta=host")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Minfo=accel -acc -ta=nvidia:kepler")
-endif()
+  add_executable(${PROJECT_NAME} ${SOURCES})
+  set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS "-ta=host")
 
-add_executable(${PROJECT_NAME} ${SOURCES})
+  add_executable(${PROJECT_NAME}_kepler ${SOURCES})
+  set_target_properties(${PROJECT_NAME}_kepler PROPERTIES
+    COMPILE_FLAGS "-Minfo=accel -acc -ta=nvidia:kepler"
+    LINK_FLAGS "-laccapi -laccg -laccn -laccg2 -ldl")
+
+  add_executable(${PROJECT_NAME}_multicore ${SOURCES})
+  set_target_properties(${PROJECT_NAME}_multicore PROPERTIES
+    COMPILE_FLAGS "-Minfo=accel -acc -ta=multicore"
+    LINK_FLAGS "-laccapi -laccg -laccn -laccg2 -ldl")
+endif()
