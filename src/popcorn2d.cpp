@@ -15,8 +15,8 @@
 
 using namespace std;
 //image settings
-const uint32_t WIDTH  = 400;
-const uint32_t HEIGHT = 400;
+const uint32_t WIDTH  = 1024;
+const uint32_t HEIGHT = 1024;
 const uint32_t ITERATION = 64;
 const uint32_t IMG_SIZE = WIDTH * HEIGHT;
 
@@ -157,7 +157,8 @@ int main(void) {
   // testNumber<0 => warmup
   for(int testNumber = -1; testNumber < numberOfTests; testNumber++){
 	  //Initialazition
-	  initImage(image);
+    initImage(image);
+
 	  auto start_time = chrono::steady_clock::now();
 	  //actuall computation
 	  for(int pass = 0; pass < passCount; ++pass){
@@ -167,18 +168,19 @@ int main(void) {
 		  computeImage(image);
 		  talphaStart += 0.001;
 	  }
-	  colorImage(image);
+    colorImage(image);
     auto end_time = chrono::steady_clock::now();
     if(testNumber<0) // warmup
       continue;
 	  log[testNumber] = chrono::duration_cast<chrono::milliseconds>(end_time - start_time).count();
   }
   //Filename for computated picture
-  getFileName(test);
   //Output data from log-array
   for(int logCount = 0; logCount < numberOfTests; logCount++) {
-	  cout <<"Test "<< logCount+1 <<" executed in "<< log[logCount] << " ms "<< endl;
+    cout <<"Test "<< logCount+1 <<" executed in "<< log[logCount] << " ms "<< endl;
   }
+
+  getFileName(test);
   //savedialog for last picture
   cout << "Save file? j/n" << endl;
   std::cin >> in;

@@ -20,7 +20,7 @@ if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "PGI")
 
   add_executable(${PROJECT_NAME}_kepler ${SOURCES})
   set_target_properties(${PROJECT_NAME}_kepler PROPERTIES
-    COMPILE_FLAGS "-Minfo=accel -acc -ta=nvidia:kepler"
+    COMPILE_FLAGS "-Minfo=accel -acc -ta=tesla:cc35,nordc" # ta by pgaccelinfo, and no RDC which is default in PGI, see http://stackoverflow.com/a/38214143
     LINK_FLAGS "-laccapi -laccg -laccn -laccg2 -ldl")
 
   add_executable(${PROJECT_NAME}_multicore ${SOURCES})
