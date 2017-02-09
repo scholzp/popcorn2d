@@ -9,7 +9,7 @@ include(CheckCXXCompilerFlag)
 # set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE scorep)
 # set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK scorep)
 
-set(SOURCES popcorn2d.cpp)
+set(SOURCES popcorn2d.cpp CsvWriter.cpp)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
@@ -27,6 +27,8 @@ if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "PGI")
   set_target_properties(${PROJECT_NAME}_multicore PROPERTIES
     COMPILE_FLAGS "-Minfo=accel -acc -ta=multicore"
     LINK_FLAGS "-laccapi -laccg -laccn -laccg2 -ldl")
+
 else()
   add_executable(${PROJECT_NAME} ${SOURCES})
 endif()
+
