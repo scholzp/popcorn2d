@@ -1,4 +1,5 @@
 #include "ppm.hpp"
+#include "CsvWriter.h"
 
 #if defined(__PGI) or defined(__PGIC__)
 #include <openacc.h>
@@ -11,20 +12,23 @@
 #include <math.h>
 #define PI 3.14159265359
 #define VERBOSE 0
-#define numberOfTests 1 //sets numbers of performed tests
-
+#define numberOfTests 1 //sets number of performed tests with given resolution
+#define numberOfRescalings 4 //sets number of resolution rescalings
+#define EnableSafedialog 0 /*controlls if safedialog is displayed or skipped
+							 if skipped, picture wont be safed to file*/
 using namespace std;
 //image settings
-const uint32_t WIDTH  = 1024;
-const uint32_t HEIGHT = 1024;
 const uint32_t ITERATION = 64;
-const uint32_t IMG_SIZE = WIDTH * HEIGHT;
+const uint32_t RES_EXPANSION = 400; //expands image resolution for each test
+uint32_t WIDTH  = 0;
+uint32_t HEIGHT = 0;
+uint32_t IMG_SIZE = WIDTH * HEIGHT;
 
 //parameters
 const int passCount = 2;
 const float s = 5.0, q = -5.0, l = 5.0, p = -5.0;
-const uint32_t w = WIDTH;
-const uint32_t h = HEIGHT;
+uint32_t w = WIDTH;
+uint32_t h = HEIGHT;
 const float t0 = 31.1;
 const float t1 = -43.4;
 const float t2 = -43.3;
@@ -49,7 +53,7 @@ void colorImage(T* image) {
 	      colors[0] = pow(density,0.4);
 	      colors[1] = pow(density,1.0);
 	      colors[2] = pow(density,1.4);
-	      // check if color values in range of [0,1], else correctj
+	      // check if color values in range of [0,1], else correct
 	      for(int count = 0; count <  3; ++count){
 	    	  if (colors[count] > 1 ){
 	    		  colors[count] = 1;
@@ -85,11 +89,13 @@ void initImage(T* image){
 	}
 }
 
+
+
+
 template<typename T>
 void computeImage(T* image) {
   float talpha = talphaStart;
 
-#pragma acc data copy(image[0:IMG_SIZE])
   {
 #pragma acc parallel loop independent
     for (uint32_t y = 0; y < HEIGHT; ++y) {
@@ -122,8 +128,13 @@ void computeImage(T* image) {
 
 }
 
-char * getFileName(char *dst){
-//Time to string formated as: ddMMYYYYmmss.ppm to create filename
+char * getFileName(char *dst, int ext){
+/*
+ * Time to string formated as: ddMMYYYYmmss
+ * if "ext" == 1, then file extension will be ppm
+ * if "ext" == 2, then file extension will be csv
+ * maybe some more extensions will be added
+*/
 	char *d = dst;
 	char buffer[18];
 	int i = 0;
@@ -132,7 +143,13 @@ char * getFileName(char *dst){
 	time(&t);
 	ctime(&t);
 	timeinfo = localtime(&t);
-	strftime(buffer,18, "%d%m%Y%H%M.ppm", timeinfo );
+	//As notes in comment near function head
+	if (ext == 1){
+		strftime(buffer,18, "%d%m%Y%H%M.ppm", timeinfo );
+	} else if (ext == 2){
+		strftime(buffer,18, "%d%m%Y%H%M.csv", timeinfo );
+	}
+
 	while (i < 17) {
 		*d = buffer[i];
 		d++;
@@ -143,44 +160,53 @@ char * getFileName(char *dst){
 
 
 int main(void) {
-
-  float* image = new float[3*IMG_SIZE];
-  char test[17];
+  char buffer[17];
   char in;
   int flag = 0;
-  int log[numberOfTests];
-
-  //performing computation numberOfTests-times
-  if (numberOfTests < 1){
-	  return 100;
-  }
-  // testNumber<0 => warmup
-  for(int testNumber = -1; testNumber < numberOfTests; testNumber++){
-	  //Initialazition
-    initImage(image);
-
-	  auto start_time = chrono::steady_clock::now();
-	  //actuall computation
-	  for(int pass = 0; pass < passCount; ++pass){
+  int log[numberOfTests + 2];//Height,Width,Test1,Test2...,Testn
+  //Output file
+  std::CsvWriter Output;
+  cout<<"sadaasd\n"<<endl;
+  for (int rescaleCount = 0; rescaleCount < numberOfRescalings - 1; ++rescaleCount) {
+	//rescaling image
+	  WIDTH += RES_EXPANSION;
+	  HEIGHT += RES_EXPANSION;
+	  w = WIDTH;
+	  h = HEIGHT;
+	  IMG_SIZE = WIDTH * HEIGHT;
+	  float* image = new float[3*IMG_SIZE];
+	//performing computation numberOfTests-times with rescaled resolution
+	if (numberOfTests < 1){
+		return 100;
+	}
+	// testNumber<0 => warmup no picture is saved as file
+	for(int testNumber = -1; testNumber < numberOfTests; testNumber++){
+		//Initialazition
+	  initImage(image);
+	#pragma acc data copy(image[0:IMG_SIZE])
+		auto start_time = chrono::steady_clock::now();
+		//actuall computation
+		for(int pass = 0; pass < passCount; ++pass){
 #if VERBOSE==1
-		  std::cout << "Pass " << (pass+1) << " out of " << passCount << endl;
+			std::cout << "Pass " << (pass+1) << " out of " << passCount << endl;
 #endif
-		  computeImage(image);
-		  talphaStart += 0.001;
-	  }
-    colorImage(image);
-    auto end_time = chrono::steady_clock::now();
-    if(testNumber<0) // warmup
-      continue;
-	  log[testNumber] = chrono::duration_cast<chrono::milliseconds>(end_time - start_time).count();
+			computeImage(image);
+			talphaStart += 0.001;
+		}
+	  auto end_time = chrono::steady_clock::now();
+	  colorImage(image);
+	  if(testNumber<0) // warmup
+		continue;
+		log[testNumber] = chrono::duration_cast<chrono::milliseconds>(end_time - start_time).count();
+	}
+	//Output data from log-array
+	for(int logCount = 0; logCount < numberOfTests; logCount++) {
+	  cout <<"Test "<< logCount+1 <<" executed in "<< log[logCount] << " ms "<< endl;
+	}
+	delete[] image;
   }
-  //Filename for computated picture
-  //Output data from log-array
-  for(int logCount = 0; logCount < numberOfTests; logCount++) {
-    cout <<"Test "<< logCount+1 <<" executed in "<< log[logCount] << " ms "<< endl;
-  }
-
-  getFileName(test);
+#if EnableSafedialog == 1
+  getFileName(buffer, 1);
   //savedialog for last picture
   cout << "Save file? j/n" << endl;
   std::cin >> in;
@@ -188,11 +214,12 @@ int main(void) {
   	  flag = 1;
     }
   if (flag == 1){
-	  cout <<"Saved to: " <<test;
-	  ImageWriter::PPM::writeRGB(image, WIDTH, HEIGHT, test);
+	  cout <<"Saved to: " <<buffer;
+	  ImageWriter::PPM::writeRGB(image, WIDTH, HEIGHT, buffer);
   }
+#endif
   cout << endl;
   //exit programm
-  delete[] image;
+
   return 0;
 }

@@ -9,7 +9,7 @@ include(CheckCXXCompilerFlag)
 # set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE scorep)
 # set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK scorep)
 
-set(SOURCES popcorn2d.cpp)
+set(SOURCES popcorn2d.cpp CsvWriter.cpp)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
