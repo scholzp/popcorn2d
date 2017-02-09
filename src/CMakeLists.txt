@@ -27,4 +27,6 @@ if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "PGI")
   set_target_properties(${PROJECT_NAME}_multicore PROPERTIES
     COMPILE_FLAGS "-Minfo=accel -acc -ta=multicore"
     LINK_FLAGS "-laccapi -laccg -laccn -laccg2 -ldl")
+else()
+  add_executable(${PROJECT_NAME} ${SOURCES})
 endif()
