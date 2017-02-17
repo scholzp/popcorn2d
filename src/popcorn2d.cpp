@@ -5,21 +5,22 @@
 #include <openacc.h>
 #endif
 
+#include <sstream>
 #include <iostream>
 #include <chrono>
 #include <time.h>
 #include <cinttypes>
 #include <math.h>
 #define PI 3.14159265359
-#define VERBOSE 0
-#define numberOfTests 1 //sets number of performed tests with given resolution
-#define numberOfRescalings 4 //sets number of resolution rescalings
+#define VERBOSE 1
+#define numberOfTests 20 //sets number of performed tests with given resolution
+#define numberOfRescalings 3 //sets number of resolution rescalings
 #define EnableSafedialog 0 /*controlls if safedialog is displayed or skipped
 							 if skipped, picture wont be safed to file*/
 using namespace std;
 //image settings
 const uint32_t ITERATION = 64;
-const uint32_t RES_EXPANSION = 400; //expands image resolution for each test
+const uint32_t RES_EXPANSION = 200; //expands image resolution for each test
 uint32_t WIDTH  = 0;
 uint32_t HEIGHT = 0;
 uint32_t IMG_SIZE = WIDTH * HEIGHT;
@@ -116,21 +117,24 @@ void computeImage(T* image) {
           }
         }
       }
+#if VERBOSE == 1
+      int each = 50;
+      //print progress
+      if((y%each)==0)
+        std::cout << "Progress = " << 100.0*y/(HEIGHT-1) << " %"<< endl;
+    	// color pixels by generated values
+#endif
     }
   }
-#if VERBOSE == 1
-  int each = 50;
-  //print progress
-  if((y%each)==0)
-    std::cout << "Progress = " << 100.0*y/(HEIGHT-1) << " %"<< endl;
-	// color pixels by generated values
-#endif
+
+
 
 }
 
 char * getFileName(char *dst, int ext){
 /*
  * Time to string formated as: ddMMYYYYmmss
+ * if "ext" == 0, then there will be not extension added
  * if "ext" == 1, then file extension will be ppm
  * if "ext" == 2, then file extension will be csv
  * maybe some more extensions will be added
@@ -148,6 +152,8 @@ char * getFileName(char *dst, int ext){
 		strftime(buffer,18, "%d%m%Y%H%M.ppm", timeinfo );
 	} else if (ext == 2){
 		strftime(buffer,18, "%d%m%Y%H%M.csv", timeinfo );
+	}else if(ext == 0){
+		strftime(buffer,18, "%d%m%Y%H%M", timeinfo );
 	}
 
 	while (i < 17) {
@@ -166,44 +172,57 @@ int main(void) {
   int log[numberOfTests + 2];//Height,Width,Test1,Test2...,Testn
   //Output file
   std::CsvWriter Output;
-  cout<<"sadaasd\n"<<endl;
-  for (int rescaleCount = 0; rescaleCount < numberOfRescalings - 1; ++rescaleCount) {
-	//rescaling image
-	  WIDTH += RES_EXPANSION;
-	  HEIGHT += RES_EXPANSION;
-	  w = WIDTH;
-	  h = HEIGHT;
-	  IMG_SIZE = WIDTH * HEIGHT;
-	  float* image = new float[3*IMG_SIZE];
-	//performing computation numberOfTests-times with rescaled resolution
-	if (numberOfTests < 1){
-		return 100;
-	}
-	// testNumber<0 => warmup no picture is saved as file
-	for(int testNumber = -1; testNumber < numberOfTests; testNumber++){
-		//Initialazition
-	  initImage(image);
-	#pragma acc data copy(image[0:IMG_SIZE])
-		auto start_time = chrono::steady_clock::now();
-		//actuall computation
-		for(int pass = 0; pass < passCount; ++pass){
-#if VERBOSE==1
-			std::cout << "Pass " << (pass+1) << " out of " << passCount << endl;
-#endif
-			computeImage(image);
-			talphaStart += 0.001;
-		}
-	  auto end_time = chrono::steady_clock::now();
-	  colorImage(image);
-	  if(testNumber<0) // warmup
-		continue;
-		log[testNumber] = chrono::duration_cast<chrono::milliseconds>(end_time - start_time).count();
-	}
-	//Output data from log-array
-	for(int logCount = 0; logCount < numberOfTests; logCount++) {
-	  cout <<"Test "<< logCount+1 <<" executed in "<< log[logCount] << " ms "<< endl;
-	}
-	delete[] image;
+  //generating first line for CSV-File (headline)
+  std::stringstream sstr;
+  sstr << "Width, Height,";
+  for (int count = 0; count < numberOfTests; count++ ){
+  	  sstr << "Test"<<count<<",";
+  }
+  //sstr<<"\n";
+  Output.addLineString(sstr.str());
+  //the image is computed numberOfRescaling*numberOfTest-Times
+  for (int rescaleCount = 0; rescaleCount <= numberOfRescalings; ++rescaleCount) {
+  	//rescaling image
+  	  WIDTH += RES_EXPANSION;
+  	  HEIGHT += RES_EXPANSION;
+  	  w = WIDTH;
+  	  h = HEIGHT;
+  	  IMG_SIZE = WIDTH * HEIGHT;
+  	  float* image = new float[3*IMG_SIZE];
+  	//performing computation numberOfTests-times with rescaled resolution
+  	if (numberOfTests < 1){
+  		return 100;
+  	}
+  	// testNumber<0 => warmup no picture is saved as file
+  	for(int testNumber = -1; testNumber < numberOfTests; testNumber++){
+  		//Initialazition
+  	  initImage(image);
+  	  log[0] = WIDTH;
+  	  log[1] = HEIGHT;
+  	#pragma acc data copy(image[0:IMG_SIZE])
+  		auto start_time = chrono::steady_clock::now();
+  		//actuall computation
+  		for(int pass = 0; pass < passCount; ++pass){
+  #if VERBOSE==1
+  			std::cout << "Pass " << (pass+1) << " out of " << passCount << endl;
+  #endif
+  			computeImage(image);
+  			talphaStart += 0.001;
+  		}
+  	  auto end_time = chrono::steady_clock::now();
+  	  colorImage(image);
+  	  if(testNumber<0) // warmup
+  		continue;
+  		log[testNumber+2] = chrono::duration_cast<chrono::milliseconds>(end_time - start_time).count();
+  	}
+  	//Output data from log-array
+  	for(int logCount = 0; logCount < numberOfTests; logCount++) {
+  	  cout <<"Test "<< logCount+1 <<" executed in "<< log[logCount+2] << " ms; Resolution "<<WIDTH<<"x"<<HEIGHT<< endl;
+  	}
+  delete[] image;
+	cout << "Tests for Resolution "<< WIDTH<<"x"<<HEIGHT<<" finished!\n";
+	Output.addLineValues(log, numberOfTests + 2);
+
   }
 #if EnableSafedialog == 1
   getFileName(buffer, 1);
@@ -219,6 +238,9 @@ int main(void) {
   }
 #endif
   cout << endl;
+  //Write Log to CSV-file
+  getFileName(buffer, 0);
+  Output.writeToCSV(buffer);
   //exit programm
 
   return 0;
