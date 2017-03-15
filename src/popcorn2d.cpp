@@ -30,10 +30,7 @@
 #define EnableSafedialog 1 /*controlls if safedialog is displayed or skipped
 							 if skipped, picture wont be safed to file*/
 
-// dispersion settings
-#define talphaStart  0.0   // sets start value for dispersion
-#define talphaIncrement 0.1 // 0.01		// sets values by wich talpha is incremented
-#define talphaCount  2			// sets how often talpha is incremented
+
 using namespace std;
 
 //image settings
@@ -171,8 +168,9 @@ char * getFileName(char *dst, int ext){
 }
 
 
-int main(void) {
+int main(int argc, char **argv) {
   char buffer[17];
+  string fname;
   char in;
   int flag = 0;
   float log[numberOfTests + 3];//Height,Width,talpha,Test1,Test2...,Testn
@@ -180,7 +178,19 @@ int main(void) {
   uint32_t w = WIDTH_START;
   uint32_t h = HEIGHT_START;
   uint32_t img_size = w*h;
-
+  // dispersion initilation
+  float talphaStart = 0.0;   		// sets start value for dispersion
+  float talphaIncrement = 0.1;		// 0.01		// sets values by wich talpha is incremented
+  float talphaCount = 2;			// sets how often talpha is incremented
+  if (argc >= 2){
+	  fname = std::string(argv[1]);
+  }
+  if (argc >= 3)
+	  talphaStart = atof(argv[2]);
+  if (argc >= 4)
+	  talphaIncrement = atof(argv[3]);
+  if (argc >= 5)
+	  talphaCount = atoi(argv[4]);
   //Output file
   std::CsvWriter Output;
   //generating first line for CSV-File (headline)
@@ -258,7 +268,11 @@ int main(void) {
   cout << endl;
   //Write Log to CSV-file
   getFileName(buffer, 0);
-  Output.writeToCSV(buffer);
+  if (fname.length() < 1)
+	  Output.writeToCSV(buffer);
+  else
+	  Output.writeToCSV(fname);
+
   //exit programm
   return 0;
 }
