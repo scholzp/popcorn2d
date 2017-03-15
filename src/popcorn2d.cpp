@@ -25,7 +25,6 @@
  * Number of tests performed with set resolution: numberOfTest*talphaCount
  */
 
-#define numberOfTests 1 //sets number of performed tests with given resolution
 #define numberOfRescalings 0 //sets number of resolution rescalings
 #define EnableSafedialog 1 /*controlls if safedialog is displayed or skipped
 							 if skipped, picture wont be safed to file*/
@@ -173,24 +172,32 @@ int main(int argc, char **argv) {
   string fname;
   char in;
   int flag = 0;
-  float log[numberOfTests + 3];//Height,Width,talpha,Test1,Test2...,Testn
+  int numberOfTests = 20;
   float dispersion = 0;
   uint32_t w = WIDTH_START;
   uint32_t h = HEIGHT_START;
-  uint32_t img_size = w*h;
   // dispersion initilation
   float talphaStart = 0.0;   		// sets start value for dispersion
   float talphaIncrement = 0.1;		// 0.01		// sets values by wich talpha is incremented
   float talphaCount = 2;			// sets how often talpha is incremented
-  if (argc >= 2){
+  //checking cmd-line for arguments and override settings if necessary
+  if (argc >= 2)
 	  fname = std::string(argv[1]);
-  }
   if (argc >= 3)
 	  talphaStart = atof(argv[2]);
   if (argc >= 4)
 	  talphaIncrement = atof(argv[3]);
   if (argc >= 5)
 	  talphaCount = atoi(argv[4]);
+  if (argc >= 6)
+  	  w = atoi(argv[5]);
+  if (argc >= 7)
+  	  h = atoi(argv[6]);
+  if (argc >= 8)
+  	  numberOfTests = atoi(argv[7]);
+  //creates log <- size depending on numberOfTests
+  float log[numberOfTests + 3];//Height,Width,talpha,Test1,Test2...,Testn
+  uint32_t img_size = w*h;
   //Output file
   std::CsvWriter Output;
   //generating first line for CSV-File (headline)
@@ -239,7 +246,7 @@ int main(int argc, char **argv) {
 
 		for(int testNumber = 0; testNumber < numberOfTests; testNumber++)
 		{
-      cout <<"Test "<< testNumber+1 <<" executed in "<< log[testNumber+3] << " ms; Resolution "<<w<<"x"<<h<<" talpha "<<log[2]<< endl;
+		cout <<"Test "<< testNumber+1 <<" executed in "<< log[testNumber+3] << " ms; Resolution "<<w<<"x"<<h<<" talpha "<<log[2]<< endl;
 		}
 		Output.addLineValues(log, numberOfTests + 3);
 		dispersion = 0;
