@@ -5,28 +5,23 @@ project(popcorn2d CXX)
 include(CheckCCompilerFlag)
 include(CheckCXXCompilerFlag)
 
-#scorep
-# set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE scorep)
-# set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK scorep)
-
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 set(SOURCES popcorn2d.cpp CsvWriter.cpp)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "PGI")
   message(">>> Setting compiler flags for PGI compiler...")
+
   add_executable(${PROJECT_NAME} ${SOURCES})
-  set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS "-ta=host")
+  set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS "-noacc")
 
   add_executable(${PROJECT_NAME}_kepler ${SOURCES})
   set_target_properties(${PROJECT_NAME}_kepler PROPERTIES
     COMPILE_FLAGS "-Minfo=accel -acc -ta=tesla:cc35,nordc" # ta by pgaccelinfo, and no RDC which is default in PGI, see http://stackoverflow.com/a/38214143
     LINK_FLAGS "-laccapi -laccg -laccn -laccg2 -ldl")
 
+  set(CMAKE_CXX_FLAGS "-Minfo=accel -acc -ta=multicore -std=c++11")
   add_executable(${PROJECT_NAME}_multicore ${SOURCES})
-  set_target_properties(${PROJECT_NAME}_multicore PROPERTIES
-    COMPILE_FLAGS "-Minfo=accel -acc -ta=multicore"
-    LINK_FLAGS "-laccapi -laccg -laccn -laccg2 -ldl")
 
 else()
   add_executable(${PROJECT_NAME} ${SOURCES})
