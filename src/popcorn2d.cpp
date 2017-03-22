@@ -26,7 +26,7 @@
  */
 
 #define numberOfRescalings 0 //sets number of resolution rescalings
-#define EnableSafedialog 1 /*controlls if safedialog is displayed or skipped
+#define EnableSafedialog 0 /*controlls if safedialog is displayed or skipped
 							 if skipped, picture wont be safed to file*/
 
 
