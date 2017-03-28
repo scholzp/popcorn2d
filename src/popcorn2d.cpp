@@ -111,7 +111,7 @@ void computeImage(T* image, float talpha, uint32_t w, uint32_t h) {
         float xk = (float) x / w * (p - l) + l;
         float yk = (float) y / h * (s - q) + q;
 #pragma acc loop seq
-        for (uint32_t j = 0; j <  ITERATION; j++) {
+        for (uint32_t j = 0; j <  ITERATION; ++j) {
           //perform iterations
           xk +=(float)  talpha * (cos( (float)t0 * talpha + yk + cos(t1 * talpha + (PI * xk))));
           yk +=(float)  talpha * (cos( (float)t2 * talpha + xk + cos(t3 * talpha + PI * yk)));
@@ -160,8 +160,8 @@ char * getFileName(char *dst, int ext){
 
 	while (i < 17) {
 		*d = buffer[i];
-		d++;
-		i++;
+		++d;
+		++i;
 	}
 	return dst;
 }
@@ -203,7 +203,7 @@ int main(int argc, char **argv) {
   //generating first line for CSV-File (headline)
   std::stringstream sstr;
   sstr << "Width, Height, talpha,";
-  for (int count = 0; count < numberOfTests; count++ ){
+  for (int count = 0; count < numberOfTests; ++count){
     sstr << "Test"<<count<<",";
   }
 
@@ -229,7 +229,7 @@ int main(int argc, char **argv) {
       double duration = 0;
 
       //compute image numberOfTests-times + 1 warmup
-      for(int testNumber = -1; testNumber < numberOfTests; testNumber++){
+      for(int testNumber = -1; testNumber < numberOfTests; ++testNumber){
         initImage(image, w, h);
 #pragma acc data copy(image[0:3*img_size])
         {
@@ -244,7 +244,7 @@ int main(int argc, char **argv) {
         log[testNumber + 3] = duration;
 		}
 
-		for(int testNumber = 0; testNumber < numberOfTests; testNumber++)
+		for(int testNumber = 0; testNumber < numberOfTests; ++testNumber)
 		{
 		cout <<"Test "<< testNumber+1 <<" executed in "<< log[testNumber+3] << " ms; Resolution "<<w<<"x"<<h<<" talpha "<<log[2]<< endl;
 		}
