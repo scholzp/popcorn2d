@@ -113,8 +113,10 @@ void computeImage(T* image, float talpha, uint32_t w, uint32_t h) {
 #pragma acc loop seq
         for (uint32_t j = 0; j <  ITERATION; ++j) {
           //perform iterations
+          //@todo use cosf to avoid double conversions and additional registers
           xk +=(float)  talpha * (cos( (float)t0 * talpha + yk + cos(t1 * talpha + (PI * xk))));
           yk +=(float)  talpha * (cos( (float)t2 * talpha + xk + cos(t3 * talpha + PI * yk)));
+          //@todo you can use unsigned to save if-conditions >=0
           int py = transY (yk, h);
           int px = transX (xk, w);
           if ( px >= 0 && py >= 0 && px  <  w && py < h) {
