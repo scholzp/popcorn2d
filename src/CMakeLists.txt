@@ -1,10 +1,8 @@
 cmake_minimum_required(VERSION 2.8)
 
-project(popcorn2d CXX)
+project(popcorn2d C CXX)
 
-include(CheckCCompilerFlag)
-include(CheckCXXCompilerFlag)
-
+# used by all targets
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
 set(SOURCES popcorn2d.cpp CsvWriter.cpp)
@@ -12,25 +10,36 @@ set(SOURCES popcorn2d.cpp CsvWriter.cpp)
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "PGI")
   message(">>> Setting compiler flags for PGI compiler...")
 
+  # used by all PGI targets
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Minfo=vect,accel")
+
+  # targets
   add_executable(${PROJECT_NAME} ${SOURCES})
   set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS "-noacc")
 
+#  vectorization is not possible due to dependencies and early exits
+#  add_executable(${PROJECT_NAME}_vect ${SOURCES})
+#  set_target_properties(${PROJECT_NAME}_vect PROPERTIES COMPILE_FLAGS "-fast") # -fast is default anyway
+
   add_executable(${PROJECT_NAME}_kepler ${SOURCES})
   set_target_properties(${PROJECT_NAME}_kepler PROPERTIES
-    COMPILE_FLAGS "-Minfo=accel -acc -ta=tesla:cc35,nordc" # ta by pgaccelinfo, and no RDC which is default in PGI, see http://stackoverflow.com/a/38214143
+    COMPILE_FLAGS "-acc -ta=tesla:cc35,nordc" # ta by pgaccelinfo, and no RDC which is default in PGI, see http://stackoverflow.com/a/38214143
     LINK_FLAGS "-laccapi -laccg -laccn -laccg2 -ldl")
 
-  set(CMAKE_CXX_FLAGS "-Minfo=accel -acc -ta=multicore -std=c++11")
   add_executable(${PROJECT_NAME}_multicore ${SOURCES})
+  set_target_properties(${PROJECT_NAME}_multicore PROPERTIES
+    COMPILE_FLAGS "-acc -ta=multicore"
+    LINK_FLAGS "-laccapi -laccg -laccn -laccg2 -ldl")
 
 else()
   add_executable(${PROJECT_NAME} ${SOURCES})
 endif()
 
 
-find_package(CUDA REQUIRED)
+find_package(CUDA)
 
 if(CUDA_FOUND AND CMAKE_CXX_COMPILER_ID MATCHES "^(GNU|Clang)$")
+  include(CheckCXXCompilerFlag)
   CHECK_CXX_COMPILER_FLAG("-std=c++11" HAS_CPP11_FLAG)
   if (HAS_CPP11_FLAG)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
@@ -81,6 +90,10 @@ if(CUDA_FOUND AND CMAKE_CXX_COMPILER_ID MATCHES "^(GNU|Clang)$")
     "ON to generate code for Compute Capability 6.1 devices (e.g. GTX 1080)"
     OFF)
 
+  option(POPCORN_GENCODE_SM70
+    "ON to generate code for Compute Capability 7.0 devices (e.g. Tesla V100)"
+    OFF)
+
   if (POPCORN_GENCODE_SM30)
     set(GENCODE ${GENCODE} ${GENCODE_SM30})
   endif(POPCORN_GENCODE_SM30)
@@ -108,6 +121,10 @@ if(CUDA_FOUND AND CMAKE_CXX_COMPILER_ID MATCHES "^(GNU|Clang)$")
   if (POPCORN_GENCODE_SM61)
     set(GENCODE ${GENCODE} ${GENCODE_SM61})
   endif(POPCORN_GENCODE_SM61)
+
+  if (POPCORN_GENCODE_SM70)
+    set(GENCODE ${GENCODE} ${GENCODE_SM70})
+  endif(POPCORN_GENCODE_SM70)
 
   if (CUDA_VERBOSE_PTXAS)
     set(VERBOSE_PTXAS --ptxas-options=-v)
